@@ -1,0 +1,45 @@
+package com.byteland.asd
+
+sealed trait StateLike[A] {
+  def hasRoute[B](a: A, b: B): Boolean
+  def unify[B](a: A, b: B): Option[State]
+}
+
+sealed trait State
+case class City(id: Int, connected: City) extends State { self =>
+  def isConnected(b: City): Boolean = connected == b || b.connected == self
+}
+case class UnifiedState(states: Set[City]) extends State
+
+
+object CityState extends StateLike[City] {
+
+  override def hasRoute[B](a: City, b: B): Boolean = b match {
+    case c: City => a.isConnected(c)
+    case u: UnifiedState => u.states.exists(a.isConnected)
+    case _ => false
+  }
+
+  override def unify[B](a: City, b: B): Option[UnifiedState] = b match {
+    case c: City => if (hasRoute(a, c)) Some(UnifiedState(Set(a, c))) else None
+    case u: UnifiedState => if (hasRoute(a, u)) Some(UnifiedState(u.states + a)) else None
+    case _ => None
+  }
+
+}
+
+object UnifiedStateState extends StateLike[UnifiedState] {
+  
+  override def hasRoute[B](a: UnifiedState, b: B): Boolean = b match {
+    case c: City => CityState.hasRoute(c, a)
+    case u: UnifiedState => a.states.exists(CityState.hasRoute(_, u))
+    case _ => false
+  }
+
+  override def unify[B](a: UnifiedState, b: B): Option[State] = b match {
+    case c: City => if (hasRoute(a, c)) Some(UnifiedState(a.states + c)) else None
+    case u: UnifiedState => if (hasRoute(a, u)) Some(UnifiedState(a.states ++ u.states)) else None
+    case _ => None
+  }
+
+}

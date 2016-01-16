@@ -11,17 +11,15 @@ object Main extends App {
 
     case (_, (numberOfCities, routes)) ⇒
 
-      val tree = generateTree(numberOfCities, routes)
+      val (_, tree) = generateTree(numberOfCities, routes).get
 
       val globalBlacklist = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty[String])
 
-      reduce(tree.get._2.subTrees, globalBlacklist, 30)
-
-      globalBlacklist.foreach(println)
+      println(findStepCount(tree, globalBlacklist))
 
   }
 
-  def reduce(trees: List[CityTree[String]], globalBlacklist: scala.collection.mutable.Map[String, Set[String]], step: Int): List[CityTree[String]] = {
+  def findStepCount(globalTree: CityTree[String], globalBlacklist: scala.collection.mutable.Map[String, Set[String]]): Int = {
 
     def filterBlackListed(tree: CityTree[String], localBlacklist: mutable.Map[String, Set[String]]): List[CityTree[String]] = {
       tree.getConnected.filterNot(c => localBlacklist.values.toSet.flatten.contains(c.getId))
@@ -79,14 +77,33 @@ object Main extends App {
 
     }
 
-    println(s"step: $step")
-    if (step > 0) {
-      val localBlacklist = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty[String])
-      val res = trees.map(run(_, globalBlacklist, localBlacklist))
-      reduce(res, globalBlacklist, step - 1)
-    } else {
-      trees
+    def updateGlobalBlacklist(): Unit = {
+      println("updating global black list")
+      globalBlacklist.foreach { case (k, v) =>
+        v.filterNot(_.equals(k)) foreach { case v2 =>
+          globalBlacklist(k) ++= globalBlacklist(v2)
+        }
+      }
+      globalBlacklist.foreach(println)
     }
+
+    def checkComplete(cityCount: Int): Boolean = {
+      updateGlobalBlacklist()
+      globalBlacklist.exists { case (k, v) =>
+        globalBlacklist.filterKeys(!_.equals(k)).exists { case (k2, v2) =>
+          (v ++ v2).size == cityCount
+        }
+      }
+    }
+
+    def loop(subtrees: List[CityTree[String]], cityCount: Int, step: Int): Int = {
+      val localBlacklist = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty[String])
+      val res = subtrees.map(run(_, globalBlacklist, localBlacklist))
+      if (checkComplete(cityCount)) step + 1 else loop(res, cityCount, step + 1)
+    }
+
+    val cityCount = globalTree.size
+    loop(globalTree.subTrees, cityCount, 1)
 
   }
 
@@ -95,6 +112,7 @@ object Main extends App {
     val map = scala.collection.mutable.Map.empty[String, CityTree[String]]
 
     val routedCities = routes.zip((1 to routes.length).map(_.toString)).groupBy(_._1).mapValues(list ⇒ list.map(_._2))
+    require(routedCities.exists(x => !x._2.contains(x._1)), "a city can not have route to itself")
     //Map(0 -> List(1, 6), 1 -> List(2, 3, 4, 5), 2 -> List(7, 8))
 
     val nodeCityIds = routedCities.keySet
@@ -123,20 +141,20 @@ object Main extends App {
     Console.println("Please enter the number of test cases:")
 
     val numberOfTestCases = scala.io.StdIn.readInt()
-    require(numberOfTestCases < 1000)
+    require(numberOfTestCases < 1000, "number of test cases should be smaller than 1000")
 
     (0 until numberOfTestCases).map { i ⇒
 
       Console.println("Please enter the number of cities:")
 
       val numberOfCities = scala.io.StdIn.readInt()
-      require(2 <= numberOfCities && numberOfCities <= 600)
+      require(2 <= numberOfCities && numberOfCities <= 600, "number of cities should be between [2, 600]")
 
       Console.println(s"Please enter the route sequence with length ${numberOfCities - 1} e.g. ${"\n"} 0 1 2")
 
       val routes = scala.io.StdIn.readLine().split(' ').toList
-      require(routes.size == numberOfCities - 1)
-      require(routes.forall((0 until numberOfCities).map(_.toString).contains))
+      require(routes.size == numberOfCities - 1, "number of routes should be 1 less than number of cities")
+      require(routes.forall((0 until numberOfCities).map(_.toString).contains), "routes should be between the cities")
 
       i -> (numberOfCities, routes)
 

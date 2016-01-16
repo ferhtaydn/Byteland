@@ -74,6 +74,19 @@ trait CityTree[+T] {
     loop(List(this), Nil)
   }
 
+  def findById[B >: T](cityId: B): Option[CityTree[T]] = {
+    @tailrec
+    def loop[A](t: List[CityTree[A]], z: Option[CityTree[A]]): Option[CityTree[A]] = t match {
+      case (l: LeafCity[A]) :: tl if l.getId == cityId ⇒ Some(l)
+      case (l: LeafCity[A]) :: tl ⇒ loop(tl, z)
+      case (n: NodeCity[A]) :: tl if n.getId == cityId ⇒ Some(n)
+      case (n: NodeCity[A]) :: tl ⇒ loop(n.getConnected ::: tl, z)
+      case _ :: tl                ⇒ loop(tl, z)
+      case _                      ⇒ z
+    }
+    loop(List(this), None)
+  }
+
   def toSeq: Seq[T] = fold(List[T]()) { (l, v) ⇒ v :: l }.reverse
 
   def toSeqPreOrder: Seq[T] = foldPreOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse

@@ -24,12 +24,23 @@ trait CityTree[+T] {
 
   private case class EvalCity[A](id: A) extends CityTree[A]
 
+  /**
+   * Private function to manage all fold operations with parameter changes.
+   * @param a tree to be folded
+   * @param z accumalator of the fold operation
+   * @param f function of the fold operation
+   * @param eval function for creating new acculamator according to the aim of traverse
+   *          by converting NodeCity to EvalCity with connected cities.
+   * @tparam A [[CityTree]] type param
+   * @tparam B Accumulator type param
+   * @return folded result
+   */
   @tailrec
-  private def foldLoop[A, B](a: List[CityTree[A]], z: B)(f: (B, A) ⇒ B)(o: (NodeCity[A], List[CityTree[A]]) ⇒ List[CityTree[A]]): B = a match {
-    case (n: NodeCity[A]) :: tl ⇒ foldLoop(o(n, tl), z)(f)(o) // never directly evaluate nodes, function o will create new accumulator
-    case (l: LeafCity[A]) :: tl ⇒ foldLoop(tl, f(z, l.id))(f)(o) // always evaluate Leaf
-    case (e: EvalCity[A]) :: tl ⇒ foldLoop(tl, f(z, e.id))(f)(o) // always evaluate Eval
-    case _                      ⇒ z // will be Nil (empty list)
+  private def foldLoop[A, B](a: List[CityTree[A]], z: B)(f: (B, A) ⇒ B)(eval: (NodeCity[A], List[CityTree[A]]) ⇒ List[CityTree[A]]): B = a match {
+    case (n: NodeCity[A]) :: tl ⇒ foldLoop(eval(n, tl), z)(f)(eval)
+    case (l: LeafCity[A]) :: tl ⇒ foldLoop(tl, f(z, l.id))(f)(eval)
+    case (e: EvalCity[A]) :: tl ⇒ foldLoop(tl, f(z, e.id))(f)(eval)
+    case _                      ⇒ z
   }
 
   def foldPreOrder[B](z: B)(f: (B, T) ⇒ B): B = {
@@ -44,10 +55,20 @@ trait CityTree[+T] {
     foldLoop(List(this), z)(f) { (n, tl) ⇒ (EvalCity(n.id) :: tl) ::: n.connected }
   }
 
-  def fold[B](z: B)(f: (B, T) ⇒ B): B = foldPreOrder(z)(f)
+  def toSeqPreOrder: Seq[T] = foldPreOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
+  def toSeqPostOrder: Seq[T] = foldPostOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
+  def toSeqLevelOrder: Seq[T] = foldLevelOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
 
-  def size: Int = fold(0) { (sum, _) ⇒ sum + 1 }
+  /**
+   * size of the tree in terms of node count
+   * @return node count
+   */
+  def size: Int = foldPreOrder(0) { (sum, _) ⇒ sum + 1 }
 
+  /**
+   * Return the height of the tree. From root to deepest leaf.
+   * @return height
+   */
   def height: Int = {
     def loop[A](t: CityTree[A]): Int = t match {
       case l: LeafCity[A] ⇒ 1
@@ -57,6 +78,10 @@ trait CityTree[+T] {
     loop(this) - 1
   }
 
+  /**
+   * Return the leaf count of the tree.
+   * @return
+   */
   def leafCount: Int = {
     @tailrec
     def loop[A](t: List[CityTree[A]], z: Int): Int = t match {
@@ -68,6 +93,10 @@ trait CityTree[+T] {
     loop(List(this), 0)
   }
 
+  /**
+   * Gather the sub-trees.
+   * @return the sub-trees of the tree.
+   */
   def subTrees: List[CityTree[T]] = {
     @tailrec
     def loop[A](t: List[CityTree[A]], z: List[CityTree[A]]): List[CityTree[A]] = t match {
@@ -79,6 +108,12 @@ trait CityTree[+T] {
     loop(List(this), Nil)
   }
 
+  /**
+   * Return the city with given id.
+   * @param cityId to be searched in tree
+   * @tparam B [[CityTree]] type param
+   * @return Option of city.
+   */
   def findById[B >: T](cityId: B): Option[CityTree[T]] = {
     @tailrec
     def loop[A](t: List[CityTree[A]], z: Option[CityTree[A]]): Option[CityTree[A]] = t match {
@@ -91,19 +126,5 @@ trait CityTree[+T] {
     }
     loop(List(this), None)
   }
-
-  def toSeq: Seq[T] = fold(List[T]()) { (l, v) ⇒ v :: l }.reverse
-
-  def toSeqPreOrder: Seq[T] = foldPreOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
-  def toSeqPostOrder: Seq[T] = foldPostOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
-  def toSeqLevelOrder: Seq[T] = foldLevelOrder(List[T]()) { (l, v) ⇒ v :: l }.reverse
-
-  def lastPreOrder: T = toSeqPreOrder.last
-  def lastPostOrder: T = toSeqPostOrder.last
-  def lastLevelOrder: T = toSeqLevelOrder.last
-
-  def nthPreOrder(n: Int): T = toSeqPreOrder(n)
-  def nthPostOrder(n: Int): T = toSeqPostOrder(n)
-  def nthLevelOrder(n: Int): T = toSeqLevelOrder(n)
 
 }

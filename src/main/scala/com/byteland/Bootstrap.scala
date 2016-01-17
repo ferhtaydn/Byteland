@@ -16,10 +16,7 @@ object Bootstrap extends App {
 
           println(s"Byteland: Root: $rootCityId, City: $tree")
 
-          import scala.collection.mutable
-          val globalBlacklist = mutable.Set.empty[mutable.Set[String]]
-
-          val step = Byteland.findStepCount(tree, globalBlacklist)
+          val step = Byteland.findStepCount(tree)
 
           println(s"step count: $step")
       }

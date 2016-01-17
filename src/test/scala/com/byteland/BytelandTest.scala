@@ -16,7 +16,7 @@ class BytelandTest extends WordSpecLike with Matchers {
     }
 
     "called findStepCount on tree" should {
-      val result = Byteland.findStepCount(tree, globalBlacklist)
+      val result = Byteland.findStepCount(tree)
       "return step count" in {
         result shouldBe treeStepCount
       }

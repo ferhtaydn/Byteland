@@ -9,7 +9,6 @@ object TestFixtures {
   val treeStepCount = 5
 
   import scala.collection.mutable
-  val globalBlacklist = mutable.Set.empty[mutable.Set[String]]
 
   val treeId = "0"
   val tree = NodeCity("0",

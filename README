@@ -1,0 +1,7 @@
+This project is based on Scala 2.11.7 and sbt 0.13.9
+
+You can run it with
+
+> sbt run
+
+Then it will prompt you to enter the inputs.

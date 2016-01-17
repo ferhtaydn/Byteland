@@ -21,7 +21,7 @@ object Bootstrap extends App {
 
           val step = Byteland.findStepCount(tree, globalBlacklist)
 
-          println(step)
+          println(s"step count: $step")
       }
   }
 

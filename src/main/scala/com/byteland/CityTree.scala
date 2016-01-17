@@ -18,8 +18,8 @@ trait CityTree[+T] {
   }
 
   def isLeaf: Boolean = this match {
-    case n: NodeCity[T] => false
-    case l: LeafCity[T] => true
+    case n: NodeCity[T] ⇒ false
+    case l: LeafCity[T] ⇒ true
   }
 
   private case class EvalCity[A](id: A) extends CityTree[A]
@@ -86,8 +86,8 @@ trait CityTree[+T] {
       case (l: LeafCity[A]) :: tl ⇒ loop(tl, z)
       case (n: NodeCity[A]) :: tl if n.getId == cityId ⇒ Some(n)
       case (n: NodeCity[A]) :: tl ⇒ loop(n.getConnected ::: tl, z)
-      case _ :: tl                ⇒ loop(tl, z)
-      case _                      ⇒ z
+      case _ :: tl ⇒ loop(tl, z)
+      case _ ⇒ z
     }
     loop(List(this), None)
   }

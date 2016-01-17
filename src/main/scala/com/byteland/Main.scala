@@ -13,16 +13,20 @@ object Main extends App {
 
       val (_, tree) = generateTree(numberOfCities, routes).get
 
-      val globalBlacklist = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty[String])
+      val globalBlacklist = mutable.Set.empty[mutable.Set[String]]
 
       println(findStepCount(tree, globalBlacklist))
 
   }
 
-  def findStepCount(globalTree: CityTree[String], globalBlacklist: scala.collection.mutable.Map[String, Set[String]]): Int = {
+  def findStepCount(globalTree: CityTree[String], globalBlacklist: mutable.Set[mutable.Set[String]]): Int = {
 
-    def filterBlackListed(tree: CityTree[String], localBlacklist: mutable.Map[String, Set[String]]): List[CityTree[String]] = {
-      tree.getConnected.filterNot(c => localBlacklist.values.toSet.flatten.contains(c.getId))
+    def filterBlackListed(tree: CityTree[String], localBlacklist: Set[String]): List[CityTree[String]] = {
+      val treeId = tree.getId.split("-").head
+      tree.getConnected.filterNot(c => localBlacklist.contains(c.getId) || localBlacklist.contains(treeId)).filterNot { c =>
+        globalBlacklist.exists(set => set.contains(treeId) && set.contains(c.getId))
+      }
+
     }
 
     def removeItem(tree: CityTree[String], t: CityTree[String]): List[CityTree[String]] = {
@@ -32,78 +36,62 @@ object Main extends App {
     def unifiedId(a: CityTree[String], b: CityTree[String]): String = s"${a.getId}-${b.getId}"
 
     def updateBlacklist(tree: CityTree[String], b: CityTree[String],
-                        globalBlacklist: mutable.Map[String, Set[String]],
-                        localBlacklist: mutable.Map[String, Set[String]]): Unit = {
+                        globalBlacklist: mutable.Set[mutable.Set[String]],
+                        localBlacklist: mutable.Set[String]): Unit = {
+
       val treeIds = tree.getId.split("-")
       val itemIds = b.getId.split("-")
 
+      val itemSet = globalBlacklist.find(set => set.contains(itemIds.head)) match {
+        case None => mutable.Set(itemIds: _*)
+        case Some(set) => globalBlacklist.remove(set); set
+      }
+      // WARN: A lot of mutation operation
+      globalBlacklist.find(set => set.contains(treeIds.head)) match {
+        case None => globalBlacklist += (itemSet ++ treeIds)
+        case Some(set) => globalBlacklist.remove(set); globalBlacklist += (set ++ itemSet)
+      }
 
-      /*println(s"treeIds: ${treeIds.toList}")
-      println(s"itemIds: ${itemIds.toList}")
-      println(s"globalBlacklist: $globalBlacklist")
-      println(s"localBlacklist: $localBlacklist")*/
+      //localBlacklist ++= treeIds.flatMap(globalBlacklist(_))
+      localBlacklist ++= globalBlacklist.find(set => set.contains(itemIds.head)).getOrElse(mutable.Set.empty[String])
 
-      globalBlacklist(treeIds.head) = globalBlacklist.getOrElse(treeIds.head,  treeIds.toSet) ++ globalBlacklist.getOrElse(itemIds.head, itemIds.toSet)
-      localBlacklist(treeIds.head) = globalBlacklist(treeIds.head)
     }
 
-    def run(tree: CityTree[String], globalBlackList: mutable.Map[String, Set[String]],
-            localBlackList: mutable.Map[String, Set[String]]): CityTree[String] = {
+    def run(tree: CityTree[String], globalBlacklist: mutable.Set[mutable.Set[String]],
+            localBlackList: mutable.Set[String]): CityTree[String] = {
 
-      val filtered = filterBlackListed(tree, localBlackList)
-
-      /*println(s"tree: $tree")
-      println(s"blacklist: $globalBlackList")
-      println(s"filtered: $filtered")*/
+      val filtered = filterBlackListed(tree, localBlackList.toSet)
 
       val result = filtered.headOption match {
         case None => tree
         case Some(t) => t match {
           case a: LeafCity[String] =>
-            updateBlacklist(tree, a, globalBlackList, localBlackList)
+            updateBlacklist(tree, a, globalBlacklist, localBlackList)
             removeItem(tree, a) match {
               case Nil => LeafCity(unifiedId(tree, a))
               case cs => NodeCity(unifiedId(tree, a), cs)
             }
           case b: NodeCity[String] =>
-            updateBlacklist(tree, b, globalBlackList, localBlackList)
+            updateBlacklist(tree, b, globalBlacklist, localBlackList)
             NodeCity(unifiedId(tree, b), removeItem(tree, b) ::: b.getConnected)
         }
       }
 
-      println(s"result: $result")
-      println()
       result
 
     }
 
-    def updateGlobalBlacklist(): Unit = {
-      println("updating global black list")
-      globalBlacklist.foreach { case (k, v) =>
-        v.filterNot(_.equals(k)) foreach { case v2 =>
-          globalBlacklist(k) ++= globalBlacklist(v2)
-        }
-      }
-      globalBlacklist.foreach(println)
+    def checkComplete: Boolean = {
+      globalBlacklist.size == 1 && (globalBlacklist.head.size == globalTree.size)
     }
 
-    def checkComplete(cityCount: Int): Boolean = {
-      updateGlobalBlacklist()
-      globalBlacklist.exists { case (k, v) =>
-        globalBlacklist.filterKeys(!_.equals(k)).exists { case (k2, v2) =>
-          (v ++ v2).size == cityCount
-        }
-      }
+    def loop(subtrees: List[CityTree[String]], step: Int): Int = {
+      val localBlacklist = mutable.Set.empty[String]
+      val res = subtrees.map(run(_, globalBlacklist, localBlacklist)).filterNot(_.isLeaf)
+      if (checkComplete) step else loop(res, step + 1)
     }
 
-    def loop(subtrees: List[CityTree[String]], cityCount: Int, step: Int): Int = {
-      val localBlacklist = mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty[String])
-      val res = subtrees.map(run(_, globalBlacklist, localBlacklist))
-      if (checkComplete(cityCount)) step + 1 else loop(res, cityCount, step + 1)
-    }
-
-    val cityCount = globalTree.size
-    loop(globalTree.subTrees, cityCount, 1)
+    loop(globalTree.subTrees, 1)
 
   }
 

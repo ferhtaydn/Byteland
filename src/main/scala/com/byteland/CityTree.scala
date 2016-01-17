@@ -17,6 +17,11 @@ trait CityTree[+T] {
     case l: LeafCity[T] ⇒ Nil
   }
 
+  def isLeaf: Boolean = this match {
+    case n: NodeCity[T] => false
+    case l: LeafCity[T] => true
+  }
+
   private case class EvalCity[A](id: A) extends CityTree[A]
 
   @tailrec

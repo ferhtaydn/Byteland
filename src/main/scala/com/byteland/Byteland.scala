@@ -9,7 +9,7 @@ object Byteland {
   def findStepCount(globalTree: CityTree[String], globalBlacklist: mutable.Set[mutable.Set[String]]): Int = {
 
     /**
-     * Filter already connected cities.
+     * Filter already unified cities.
      * First, check the local blacklist with tree root id and
      * Second, check the global black list to filter with tree root id and its connected city ids.
      * @param tree tree to be filtered
@@ -18,8 +18,12 @@ object Byteland {
      */
     def filterAlreadyUnifiedCities(tree: CityTree[String], localBlacklist: Set[String]): List[CityTree[String]] = {
       val treeId = tree.getId.split("-").head
-      tree.getConnected.filterNot(c ⇒ localBlacklist.contains(c.getId) || localBlacklist.contains(treeId)).filterNot { c ⇒
-        globalBlacklist.exists(set ⇒ set.contains(treeId) && set.contains(c.getId))
+      if (localBlacklist.contains(treeId)) {
+        Nil
+      } else {
+        tree.getConnected.filterNot(c ⇒ localBlacklist.contains(c.getId)).filterNot { c ⇒
+          globalBlacklist.exists(set ⇒ set.contains(treeId) && set.contains(c.getId))
+        }
       }
     }
 
@@ -76,23 +80,23 @@ object Byteland {
      * The main logic for unification of sub-trees.
      * @param c the tree to be unified with its connected cities.
      * @param globalBlacklist a set of unified cities until now.
-     * @param localBlackList a set of unified cities in that session.
+     * @param localBlacklist a set of unified cities in that session.
      * @return unified city
      */
     def unify(c: CityTree[String], globalBlacklist: mutable.Set[mutable.Set[String]],
-      localBlackList: mutable.Set[String]): CityTree[String] = {
+      localBlacklist: mutable.Set[String]): CityTree[String] = {
 
-      filterAlreadyUnifiedCities(c, localBlackList.toSet).headOption match {
+      filterAlreadyUnifiedCities(c, localBlacklist.toSet).headOption match {
         case None ⇒ c
         case Some(t) ⇒ t match {
           case a: LeafCity[String] ⇒
-            updateBlacklists(c, a, globalBlacklist, localBlackList)
+            updateBlacklists(c, a, globalBlacklist, localBlacklist)
             remainingConnectedCities(c, a) match {
               case Nil ⇒ LeafCity(unifiedId(c, a))
               case cs  ⇒ NodeCity(unifiedId(c, a), cs)
             }
           case b: NodeCity[String] ⇒
-            updateBlacklists(c, b, globalBlacklist, localBlackList)
+            updateBlacklists(c, b, globalBlacklist, localBlacklist)
             NodeCity(unifiedId(c, b), remainingConnectedCities(c, b) ::: b.getConnected)
         }
       }

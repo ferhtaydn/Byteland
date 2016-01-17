@@ -66,34 +66,6 @@ trait CityTree[+T] {
   def size: Int = foldPreOrder(0) { (sum, _) ⇒ sum + 1 }
 
   /**
-   * Return the height of the tree. From root to deepest leaf.
-   * @return height
-   */
-  def height: Int = {
-    def loop[A](t: CityTree[A]): Int = t match {
-      case l: LeafCity[A] ⇒ 1
-      case n: NodeCity[A] ⇒ n.getConnected.map(loop(_)).max + 1
-      case _              ⇒ 0
-    }
-    loop(this) - 1
-  }
-
-  /**
-   * Return the leaf count of the tree.
-   * @return
-   */
-  def leafCount: Int = {
-    @tailrec
-    def loop[A](t: List[CityTree[A]], z: Int): Int = t match {
-      case (l: LeafCity[A]) :: tl ⇒ loop(tl, z + 1)
-      case (n: NodeCity[A]) :: tl ⇒ loop(n.getConnected ::: tl, z)
-      case _ :: tl                ⇒ loop(tl, z)
-      case _                      ⇒ z
-    }
-    loop(List(this), 0)
-  }
-
-  /**
    * Gather the sub-trees.
    * @return the sub-trees of the tree.
    */
@@ -107,24 +79,4 @@ trait CityTree[+T] {
     }
     loop(List(this), Nil)
   }
-
-  /**
-   * Return the city with given id.
-   * @param cityId to be searched in tree
-   * @tparam B [[CityTree]] type param
-   * @return Option of city.
-   */
-  def findById[B >: T](cityId: B): Option[CityTree[T]] = {
-    @tailrec
-    def loop[A](t: List[CityTree[A]], z: Option[CityTree[A]]): Option[CityTree[A]] = t match {
-      case (l: LeafCity[A]) :: tl if l.getId == cityId ⇒ Some(l)
-      case (l: LeafCity[A]) :: tl ⇒ loop(tl, z)
-      case (n: NodeCity[A]) :: tl if n.getId == cityId ⇒ Some(n)
-      case (n: NodeCity[A]) :: tl ⇒ loop(n.getConnected ::: tl, z)
-      case _ :: tl ⇒ loop(tl, z)
-      case _ ⇒ z
-    }
-    loop(List(this), None)
-  }
-
 }
